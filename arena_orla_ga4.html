@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arena Orla — Dashboard de Performance</title>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a0f1e; --bg2:#111827; --bg3:#1a2235; --card:#1e293b;
+  --border:#2d3f5a; --text:#e2e8f0; --muted:#64748b;
+  --primary:#00c2ff; --accent:#00e5a0;
+  --green:#00e5a0; --blue:#00c2ff; --purple:#a78bfa;
+  --orange:#fb923c; --warn:#f59e0b; --danger:#ef4444; --teal:#2dd4bf;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+
+/* ── LOGIN ── */
+#login-screen{
+  position:fixed;inset:0;
+  background:linear-gradient(135deg,#0a0f1e 0%,#0f2744 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;
+}
+.login-logo{display:flex;align-items:center;gap:12px;margin-bottom:40px;}
+.login-logo-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;}
+.login-logo-name{font-size:22px;font-weight:700;background:linear-gradient(90deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.login-card{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:40px 48px;text-align:center;width:420px;
+  box-shadow:0 0 40px rgba(0,194,255,.08);
+}
+.login-card h2{font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px;}
+.login-card p{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.6;}
+.login-report-name{
+  background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:12px 16px;font-size:13px;color:var(--primary);margin-bottom:28px;font-weight:600;
+}
+.btn-google{
+  display:flex;align-items:center;justify-content:center;gap:12px;width:100%;
+  padding:13px 20px;border-radius:8px;border:1px solid var(--border);
+  background:var(--bg3);font-size:14px;font-weight:600;color:var(--text);
+  cursor:pointer;transition:border-color .2s,box-shadow .2s;
+}
+.btn-google:hover{border-color:var(--primary);box-shadow:0 0 16px rgba(0,194,255,.15);}
+.btn-google svg{width:18px;height:18px;flex-shrink:0;}
+.login-note{margin-top:16px;font-size:11px;color:var(--muted);line-height:1.5;}
+
+/* ── APP SHELL ── */
+#app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+/* ── HEADER ── */
+.ls-toolbar{
+  height:56px;
+  background:linear-gradient(135deg,#0d1b2e 0%,#0f2744 100%);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0;z-index:200;
+}
+.ls-logo{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.ls-logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.ls-logo-name{font-size:17px;font-weight:700;background:linear-gradient(90deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.tb-div{width:1px;height:24px;background:var(--border);flex-shrink:0;}
+.report-title{font-size:16px;font-weight:600;color:var(--text);}
+.report-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+.tb-space{flex:1;}
+.tb-actions{display:flex;align-items:center;gap:8px;}
+.tb-btn{
+  display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;
+  border:1px solid var(--border);background:var(--card);font-size:12px;font-weight:500;
+  color:var(--muted);cursor:pointer;transition:all .2s;
+}
+.tb-btn:hover{border-color:var(--primary);color:var(--text);}
+.avatar{
+  width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,var(--primary),var(--accent));
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;color:var(--bg);cursor:pointer;flex-shrink:0;overflow:hidden;
+}
+.avatar img{width:100%;height:100%;object-fit:cover;}
+
+/* ── TABS BAR ── */
+.ls-ctrl-bar{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 24px;gap:0;flex-shrink:0;
+}
+.ctrl-label{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.5px;padding:0 12px;}
+.ctrl-sep{width:1px;height:20px;background:var(--border);margin:0 8px;}
+.date-select{
+  border:1px solid var(--border);border-radius:6px;padding:5px 10px;
+  font-size:12px;color:var(--primary);background:rgba(0,194,255,.06);
+  cursor:pointer;outline:none;margin-left:4px;
+}
+.date-select option{background:var(--bg2);color:var(--text);}
+
+/* ── CANVAS ── */
+.ls-canvas{flex:1;overflow-y:auto;background:var(--bg);padding:24px 28px 80px;}
+.ls-page{display:none;}
+.ls-page.active{display:block;}
+
+/* ── PAGES BAR ── */
+.ls-pages-bar{
+  height:44px;background:var(--bg2);border-top:1px solid var(--border);
+  display:flex;align-items:center;padding:0 24px;gap:0;flex-shrink:0;overflow-x:auto;
+}
+.ls-tab{
+  display:flex;align-items:center;gap:7px;padding:14px 18px;
+  font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;
+  white-space:nowrap;transition:all .2s;border:none;background:transparent;
+  border-bottom:2px solid transparent;
+}
+.ls-tab:hover{color:var(--text);}
+.ls-tab.active{color:var(--primary);border-bottom-color:var(--primary);}
+.tab-num{font-size:11px;}
+
+/* ── SECTION LABEL ── */
+.sec-label{
+  font-size:13px;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:1px;margin:24px 0 14px;
+}
+.sec-label:first-child{margin-top:0;}
+
+/* ── PAGE HEADER ── */
+.page-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+.page-hdr-title{font-size:20px;font-weight:700;background:linear-gradient(90deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.page-hdr-sub{font-size:12px;color:var(--muted);margin-top:4px;}
+.page-hdr-badge{font-size:12px;color:var(--muted);}
+
+/* ── SCORECARD ── */
+.sc-row{display:grid;gap:16px;margin-bottom:16px;}
+.sc-row.c5{grid-template-columns:repeat(5,1fr);}
+.sc-row.c4{grid-template-columns:repeat(4,1fr);}
+.sc-row.c3{grid-template-columns:repeat(3,1fr);}
+.sc-card{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:20px;position:relative;overflow:hidden;transition:border-color .2s;
+}
+.sc-card:hover{border-color:var(--primary);}
+.sc-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0;}
+.sc-card.c-blue::before{background:var(--blue);}
+.sc-card.c-green::before{background:var(--green);}
+.sc-card.c-purple::before{background:var(--purple);}
+.sc-card.c-orange::before{background:var(--orange);}
+.sc-card.c-teal::before{background:var(--teal);}
+.sc-card.c-yellow::before{background:var(--warn);}
+.sc-card.c-red::before{background:var(--danger);}
+.sc-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;}
+.sc-val{font-size:28px;font-weight:700;line-height:1;margin-bottom:8px;}
+.sc-card.c-blue .sc-val{color:var(--blue);}
+.sc-card.c-green .sc-val{color:var(--green);}
+.sc-card.c-purple .sc-val{color:var(--purple);}
+.sc-card.c-orange .sc-val{color:var(--orange);}
+.sc-card.c-teal .sc-val{color:var(--teal);}
+.sc-card.c-yellow .sc-val{color:var(--warn);}
+.sc-card.c-red .sc-val{color:var(--danger);}
+.sc-sub{font-size:12px;color:var(--muted);}
+.sc-up{color:var(--green);}.sc-dn{color:var(--danger);}
+
+/* ── CHART GRID ── */
+.cg{display:grid;gap:16px;margin-bottom:16px;}
+.cg.c2{grid-template-columns:1fr 1fr;}
+.cg.c3{grid-template-columns:1fr 1fr 1fr;}
+.cg.wide{grid-template-columns:2fr 1fr;}
+.cg.wide-l{grid-template-columns:3fr 2fr;}
+
+/* ── CHART CARD ── */
+.cc{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .2s;}
+.cc:hover{border-color:rgba(0,194,255,.3);}
+.cc.full{grid-column:1/-1;}
+.cc-hdr{padding:16px 18px 0;}
+.cc-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;}
+.cc-sub{font-size:11px;color:var(--muted);margin-bottom:0;}
+.cc-body{padding:14px 18px 18px;}
+.cw{position:relative;}
+.cw.h160{height:160px;}.cw.h200{height:200px;}.cw.h240{height:240px;}.cw.h280{height:280px;}
+
+/* ── TABLE ── */
+.ls-tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.ls-tbl thead th{color:var(--muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;padding:10px 14px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap;}
+.ls-tbl tbody tr{border-bottom:1px solid rgba(45,63,90,.4);transition:background .1s;}
+.ls-tbl tbody tr:hover{background:rgba(0,194,255,.04);}
+.ls-tbl tbody td{padding:10px 14px;color:var(--text);vertical-align:middle;}
+.ls-tbl td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.tbl-pg{display:flex;align-items:center;justify-content:flex-end;padding:10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);}
+
+/* ── CHIPS ── */
+.chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;}
+.ch-blue{background:rgba(0,194,255,.12);color:var(--blue);}
+.ch-green{background:rgba(0,229,160,.12);color:var(--green);}
+.ch-yellow{background:rgba(245,158,11,.12);color:var(--warn);}
+.ch-gray{background:rgba(100,116,139,.15);color:var(--muted);}
+.ch-orange{background:rgba(251,146,60,.12);color:var(--orange);}
+.ch-teal{background:rgba(45,212,191,.12);color:var(--teal);}
+.ch-red{background:rgba(239,68,68,.12);color:var(--danger);}
+
+/* ── FUNNEL TABLE ── */
+.fn-tbl{width:100%;font-size:12px;border-collapse:collapse;}
+.fn-tbl th{color:var(--muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;}
+.fn-tbl td{padding:10px;border-bottom:1px solid rgba(45,63,90,.3);vertical-align:middle;}
+.fn-bar-bg{width:180px;background:var(--bg3);border-radius:4px;height:24px;overflow:hidden;}
+.fn-bar-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:10px;font-weight:700;color:var(--bg);}
+.fn-event{font-size:10px;color:var(--muted);font-family:monospace;background:var(--bg3);padding:2px 6px;border-radius:3px;}
+
+/* ── INLINE BAR ── */
+.ib{display:flex;align-items:center;gap:8px;}
+.ib-bg{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;min-width:40px;}
+.ib-fill{height:100%;border-radius:3px;}
+
+/* ── BANNERS ── */
+.error-banner{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--danger);margin-bottom:16px;display:none;align-items:center;gap:8px;}
+.info-banner{background:rgba(0,194,255,.07);border:1px solid rgba(0,194,255,.2);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--primary);margin-bottom:16px;display:flex;align-items:flex-start;gap:8px;line-height:1.5;}
+.info-banner code{background:var(--bg3);padding:1px 5px;border-radius:3px;font-size:10px;color:var(--accent);}
+
+/* ── LOADING ── */
+#loading-overlay{
+  position:fixed;inset:0;background:rgba(10,15,30,.88);
+  display:none;align-items:center;justify-content:center;
+  z-index:500;flex-direction:column;gap:16px;
+}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-txt{font-size:13px;color:var(--muted);}
+
+@media(max-width:900px){
+  .cg.c2,.cg.wide,.cg.wide-l{grid-template-columns:1fr;}
+  .sc-row.c5{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div id="login-screen">
+  <div class="login-logo">
+    <div class="login-logo-icon">🏖️</div>
+    <span class="login-logo-name">Arena Orla</span>
+  </div>
+  <div class="login-card">
+    <h2>Dashboard de Performance</h2>
+    <p>Acesse com sua conta Google que tem permissão de visualização na propriedade GA4.</p>
+    <div class="login-report-name">📊 MVP · Propriedade GA4: 345272721</div>
+    <button class="btn-google" onclick="doLogin()">
+      <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+      Entrar com Google
+    </button>
+    <p class="login-note">Apenas contas com acesso ao GA4 do Arena Orla conseguirão visualizar os dados.</p>
+  </div>
+</div>
+
+<!-- ══════════════ LOADING OVERLAY ══════════════ -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-txt" id="loading-txt">Carregando dados do GA4...</div>
+</div>
+
+<!-- ══════════════ APP ══════════════ -->
+<div id="app" style="display:none;">
+
+  <!-- TOOLBAR -->
+  <div class="ls-toolbar">
+    <div class="ls-logo">
+      <div class="ls-logo-icon">🏖️</div>
+      <span class="ls-logo-name">Arena Orla</span>
+    </div>
+    <div class="tb-div"></div>
+    <div>
+      <div class="report-title">Arena Orla — Dashboard de Performance</div>
+      <div class="report-sub" id="tb-updated">Conectado ao GA4 · Propriedade 345272721</div>
+    </div>
+    <div class="tb-space"></div>
+    <div class="tb-actions">
+      <button class="tb-btn" onclick="refreshData()">🔄 Atualizar</button>
+      <button class="tb-btn" onclick="doLogout()">Sair</button>
+      <div class="avatar" id="user-avatar">?</div>
+    </div>
+  </div>
+
+  <!-- CONTROL BAR -->
+  <div class="ls-ctrl-bar">
+    <span class="ctrl-label">Período</span>
+    <select class="date-select" id="date-select" onchange="onDateChange(this.value)">
+      <option value="7daysAgo">Últimos 7 dias</option>
+      <option value="30daysAgo" selected>Últimos 30 dias</option>
+      <option value="90daysAgo">Últimos 90 dias</option>
+      <option value="365daysAgo">Último ano</option>
+    </select>
+    <div class="ctrl-sep"></div>
+    <div class="ls-ctrl active">📊 GA4 · Property 345272721 <span class="ctrl-caret">●</span></div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="ls-canvas">
+
+    <!-- ── PÁGINA 1: VISÃO GERAL ── -->
+    <div class="ls-page active" id="page-1">
+      <div class="ls-sheet">
+        <div class="page-hdr">
+          <div><div class="page-hdr-title">Visão Geral</div><div class="page-hdr-sub" id="p1-period">Carregando...</div></div>
+          <div class="page-hdr-badge">🏖️ Arena Orla MVP</div>
+        </div>
+
+        <div id="error-banner" class="error-banner">⚠️ <span id="error-msg"></span></div>
+
+        <div class="info-banner">ℹ️ Os dados abaixo refletem os eventos já registrados na propriedade GA4. Métricas que dependem de eventos customizados do GTM (<code>fez_checkin</code>, <code>clicou_whatsapp</code>, etc.) aparecerão assim que o site entrar no ar e os eventos forem disparados.</div>
+
+        <div class="sec-label">Métricas principais</div>
+        <div class="sc-row c5" id="sc-overview"></div>
+
+        <div class="sec-label">Tendência de eventos</div>
+        <div class="cg wide-l">
+          <div class="cc">
+            <div class="cc-hdr"><div><div class="cc-title">Eventos por dia</div><div class="cc-sub">visitou_home · clicou_quiosque · clicou_whatsapp · fez_checkin</div></div></div>
+            <div class="cc-body"><div class="cw h240"><canvas id="c-trend"></canvas></div></div>
+          </div>
+          <div class="cc">
+            <div class="cc-hdr"><div><div class="cc-title">Distribuição de eventos</div><div class="cc-sub">Por tipo de interação</div></div></div>
+            <div class="cc-body"><div class="cw h240"><canvas id="c-eventdist"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="cg c2">
+          <div class="cc">
+            <div class="cc-hdr"><div><div class="cc-title">Sessões por Origem (utm_source)</div><div class="cc-sub">Aquisição por canal</div></div></div>
+            <div class="cc-body"><div class="cw h200"><canvas id="c-sources"></canvas></div></div>
+          </div>
+          <div class="cc">
+            <div class="cc-hdr"><div><div class="cc-title">Sessões por Mídia (utm_medium)</div><div class="cc-sub">Distribuição por tipo de mídia</div></div></div>
+            <div class="cc-body"><div class="cw h200"><canvas id="c-medium"></canvas></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PÁGINA 2: FUNIL ── -->
+    <div class="ls-page" id="page-2">
+      <div class="ls-sheet">
+        <div class="page-hdr">
+          <div><div class="page-hdr-title">Funil de Conversão</div><div class="page-hdr-sub">Do primeiro acesso ao check-in presencial</div></div>
+          <div class="page-hdr-badge">🏖️ Arena Orla MVP</div>
+        </div>
+
+        <div class="sc-row c3" id="sc-funil"></div>
+
+        <div class="cg wide">
+          <div class="cc">
+            <div class="cc-hdr"><div><div class="cc-title">Funil de Eventos</div><div class="cc-sub">Usuários por etapa · % em relação ao topo</div></div></div>
+            <div class="cc-body" style="padding:12px 16px 16px"><table class="fn-tbl"><thead><tr><th>Etapa</th><th>Evento (GTM/GA4)</th><th style="width:190px">Volume</th><th style="text-align:right">Total</th><th style="text-align:right">% do topo</th><th style="text-align:right">Drop-off</th></tr></thead><tbody id="funnel-tbody"></tbody></table></div>
+          </div>
+          <div class="cc">
+            <div class="cc-hdr"><div><div class="cc-title">Drop-off por etapa</div><div class="cc-sub">% perdida em relação ao step anterior</div></div></div>
+            <div class="cc-body"><div class="cw h200"><canvas id="c-dropoff"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="sec-label">Funil por origem de tráfego</div>
+        <div class="cc full">
+          <div class="cc-hdr"><div><div class="cc-title">Conversão por utm_source</div><div class="cc-sub">Sessões · Torcidômetro · WA Cliques · Check-ins — por canal de aquisição</div></div></div>
+          <div class="cc-body"><div class="cw h240"><canvas id="c-funnel-src"></canvas></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PÁGINA 3: TORCIDÔMETRO ── -->
+    <div class="ls-page" id="page-3">
+      <div class="ls-sheet">
+        <div class="page-hdr">
+          <div><div class="page-hdr-title">Torcidômetro</div><div class="page-hdr-sub">Perfis de público e comportamento</div></div>
+          <div class="page-hdr-badge">🏖️ Arena Orla MVP</div>
+        </div>
+
+        <div class="sc-row c4" id="sc-quiz"></div>
+
+        <div class="cg c2">
+          <div class="cc">
+            <div class="cc-hdr"><div><div class="cc-title">Distribuição de Perfis (perfil_resultante)</div><div class="cc-sub">Resultado do Torcidômetro por público</div></div></div>
+            <div class="cc-body"><div class="cw h200"><canvas id="c-quiz-profiles"></canvas></div></div>
+          </div>
+          <div class="cc">
+            <div class="cc-hdr"><div><div class="cc-title">Conversão em Check-in por Perfil</div><div class="cc-sub">Qual perfil converte mais presencialmente?</div></div></div>
+            <div class="cc-body"><div class="cw h200"><canvas id="c-quiz-conv"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="cg c2">
+          <div class="cc">
+            <div class="cc-hdr"><div><div class="cc-title">Respostas por Pergunta</div><div class="cc-sub">resposta_1 a resposta_4</div></div></div>
+            <div class="cc-body"><div class="cw h200"><canvas id="c-quiz-ans"></canvas></div></div>
+          </div>
+          <div class="cc">
+            <div class="cc-hdr"><div><div class="cc-title">Quiosques recomendados pelo Torcidômetro</div><div class="cc-sub">quiosque_1/2/3_sugerido</div></div></div>
+            <div class="cc-body"><div class="cw h200"><canvas id="c-quiz-kiosk"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="info-banner">ℹ️ Os gráficos desta página dependem das dimensões personalizadas <code>perfil_resultante</code>, <code>resposta_1</code>–<code>resposta_4</code> e <code>quiosque_sugerido</code> registradas no GA4. Peça ao time de dev para cadastrá-las em GA4 → Administrador → Definições personalizadas.</div>
+      </div>
+    </div>
+
+    <!-- ── PÁGINA 4: TRÁFEGO ── -->
+    <div class="ls-page" id="page-4">
+      <div class="ls-sheet">
+        <div class="page-hdr">
+          <div><div class="page-hdr-title">Tráfego e Campanhas</div><div class="page-hdr-sub">utm_source · utm_medium · utm_campaign</div></div>
+          <div class="page-hdr-badge">🏖️ Arena Orla MVP</div>
+        </div>
+
+        <div class="sc-row c4" id="sc-traffic"></div>
+
+        <div class="cg wide">
+          <div class="cc">
+            <div class="cc-hdr"><div><div class="cc-title">Sessões por Dia e utm_source</div><div class="cc-sub">Evolução de tráfego por canal</div></div></div>
+            <div class="cc-body"><div class="cw h240"><canvas id="c-src-time"></canvas></div></div>
+          </div>
+          <div class="cc">
+            <div class="cc-hdr"><div><div class="cc-title">utm_medium</div><div class="cc-sub">Participação por mídia</div></div></div>
+            <div class="cc-body"><div class="cw h240"><canvas id="c-medium2"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="sec-label">Performance por campanha</div>
+        <div class="cc full">
+          <div class="cc-hdr"><div><div class="cc-title">Tabela de Campanhas (utm_campaign)</div><div class="cc-sub">Sessões · Usuários ativos · por campanha</div></div></div>
+          <div class="cc-body" style="padding:0">
+            <table class="ls-tbl"><thead><tr><th>utm_campaign</th><th>utm_source</th><th>utm_medium</th><th class="num">Sessões</th><th class="num">Usuários</th></tr></thead><tbody id="campaign-tbody"></tbody></table>
+            <div class="tbl-pg"><span id="campaign-count"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PÁGINA 5: PÁGINAS ── -->
+    <div class="ls-page" id="page-5">
+      <div class="ls-sheet">
+        <div class="page-hdr">
+          <div><div class="page-hdr-title">Páginas do Site</div><div class="page-hdr-sub">Visualizações por página · page_view</div></div>
+          <div class="page-hdr-badge">🏖️ Arena Orla MVP</div>
+        </div>
+
+        <div class="sc-row c3" id="sc-pages"></div>
+
+        <div class="cg wide">
+          <div class="cc">
+            <div class="cc-hdr"><div><div class="cc-title">Top Páginas por Visualizações</div><div class="cc-sub">screenPageViews por pagePath</div></div></div>
+            <div class="cc-body" style="padding:0">
+              <table class="ls-tbl"><thead><tr><th>#</th><th>Página</th><th class="num">Visualizações</th><th class="num">% do total</th></tr></thead><tbody id="pages-tbody"></tbody></table>
+            </div>
+          </div>
+          <div class="cc">
+            <div class="cc-hdr"><div><div class="cc-title">Distribuição por página</div><div class="cc-sub">Top 8 páginas mais acessadas</div></div></div>
+            <div class="cc-body"><div class="cw h240"><canvas id="c-pages-pie"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="cc full" style="margin-top:12px">
+          <div class="cc-hdr"><div><div class="cc-title">Visualizações por Dispositivo</div><div class="cc-sub">deviceCategory — desktop · mobile · tablet</div></div></div>
+          <div class="cc-body"><div class="cw h200"><canvas id="c-device"></canvas></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /canvas -->
+
+  <!-- PAGES BAR -->
+  <div class="ls-pages-bar">
+    <button class="ls-tab active" onclick="goPage(1,this)"><span class="tab-num">1</span> Visão Geral</button>
+    <button class="ls-tab" onclick="goPage(2,this)"><span class="tab-num">2</span> Funil de Conversão</button>
+    <button class="ls-tab" onclick="goPage(3,this)"><span class="tab-num">3</span> Torcidômetro</button>
+    <button class="ls-tab" onclick="goPage(4,this)"><span class="tab-num">4</span> Tráfego e Campanhas</button>
+    <button class="ls-tab" onclick="goPage(5,this)"><span class="tab-num">5</span> Páginas do Site</button>
+  </div>
+</div><!-- /app -->
+
+<script>
+/* ══════════════════════════════════
+   CONFIG
+══════════════════════════════════ */
+const CLIENT_ID   = '546823703441-v4ki1tkses8ov3bf02rpuipcqgiq40c2.apps.googleusercontent.com';
+const PROPERTY_ID = '345272721';
+const SCOPE       = 'https://www.googleapis.com/auth/analytics.readonly';
+const GA4_URL     = `https://analyticsdata.googleapis.com/v1beta/properties/${PROPERTY_ID}:runReport`;
+const PALETTE     = ['#00c2ff','#00e5a0','#a78bfa','#fb923c','#f59e0b','#2dd4bf','#f472b6','#ef4444'];
+
+/* ── State ── */
+let tokenClient, accessToken = null, userInfo = null;
+let startDate = '30daysAgo', endDate = 'today';
+const charts = {};
+const data   = {}; // fetched data cache
+
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size   = 11;
+Chart.defaults.color       = '#64748b';
+const GC = 'rgba(45,63,90,0.5)';
+const AC = '#2d3f5a';
+
+/* ══════════════════════════════════
+   AUTH
+══════════════════════════════════ */
+window.onload = () => {
+  google.accounts.id.initialize({ client_id: CLIENT_ID });
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPE,
+    callback: onToken,
+  });
+};
+
+function doLogin() { tokenClient.requestAccessToken({ prompt: 'select_account' }); }
+
+function doLogout() {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken);
+  accessToken = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+async function onToken(resp) {
+  if (resp.error) { showError('Falha no login: ' + resp.error); return; }
+  accessToken = resp.access_token;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  await loadAllData();
+}
+
+/* ══════════════════════════════════
+   GA4 API
+══════════════════════════════════ */
+async function runReport(body) {
+  const r = await fetch(GA4_URL, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dateRanges: [{ startDate, endDate }], ...body })
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error(e?.error?.message || `HTTP ${r.status}`);
+  }
+  return r.json();
+}
+
+/* Parse GA4 rows into [{dim1, dim2..., metric1, metric2...}] */
+function parseRows(resp) {
+  if (!resp?.rows) return [];
+  const dh = resp.dimensionHeaders || [];
+  const mh = resp.metricHeaders    || [];
+  return resp.rows.map(row => {
+    const obj = {};
+    dh.forEach((h,i) => obj[h.name] = row.dimensionValues[i]?.value ?? '');
+    mh.forEach((h,i) => obj[h.name] = Number(row.metricValues[i]?.value ?? 0));
+    return obj;
+  });
+}
+
+/* ══════════════════════════════════
+   LOAD ALL DATA
+══════════════════════════════════ */
+async function loadAllData() {
+  showLoading(true, 'Buscando dados do GA4...');
+  hideError();
+  try {
+    const [evTotals, daily, sources, mediums, campaigns, pages, devices, dailySrc] = await Promise.all([
+      runReport({ dimensions:[{name:'eventName'}], metrics:[{name:'eventCount'}], orderBys:[{metric:{metricName:'eventCount'},desc:true}] }),
+      runReport({ dimensions:[{name:'date'},{name:'eventName'}], metrics:[{name:'eventCount'}],
+        orderBys:[{dimension:{dimensionName:'date'}}],
+        dimensionFilter:{filter:{fieldName:'eventName',inListFilter:{values:['visitou_home','clicou_quiosque','clicou_whatsapp','fez_checkin','iniciou_quiz','concluiu_quiz']}}} }),
+      runReport({ dimensions:[{name:'sessionSource'}], metrics:[{name:'sessions'},{name:'activeUsers'}], orderBys:[{metric:{metricName:'sessions'},desc:true}], limit:8 }),
+      runReport({ dimensions:[{name:'sessionMedium'}], metrics:[{name:'sessions'}], orderBys:[{metric:{metricName:'sessions'},desc:true}], limit:8 }),
+      runReport({ dimensions:[{name:'sessionCampaignName'},{name:'sessionSource'},{name:'sessionMedium'}], metrics:[{name:'sessions'},{name:'activeUsers'}], orderBys:[{metric:{metricName:'sessions'},desc:true}], limit:20 }),
+      runReport({ dimensions:[{name:'pagePath'}], metrics:[{name:'screenPageViews'},{name:'activeUsers'}], orderBys:[{metric:{metricName:'screenPageViews'},desc:true}], limit:15 }),
+      runReport({ dimensions:[{name:'deviceCategory'}], metrics:[{name:'sessions'},{name:'activeUsers'}] }),
+      runReport({ dimensions:[{name:'date'},{name:'sessionSource'}], metrics:[{name:'sessions'}], orderBys:[{dimension:{dimensionName:'date'}}], limit:200 }),
+    ]);
+
+    data.evTotals  = parseRows(evTotals);
+    data.daily     = parseRows(daily);
+    data.sources   = parseRows(sources);
+    data.mediums   = parseRows(mediums);
+    data.campaigns = parseRows(campaigns);
+    data.pages     = parseRows(pages);
+    data.devices   = parseRows(devices);
+    data.dailySrc  = parseRows(dailySrc);
+
+    renderAll();
+  } catch(e) {
+    showError(e.message);
+  } finally {
+    showLoading(false);
+  }
+}
+
+function refreshData() { if (accessToken) loadAllData(); }
+
+function onDateChange(v) { startDate = v; refreshData(); }
+
+/* ══════════════════════════════════
+   HELPERS
+══════════════════════════════════ */
+function evCount(name) {
+  const r = data.evTotals?.find(r => r.eventName === name);
+  return r ? r.eventCount : 0;
+}
+
+function fmtNum(n) {
+  if (n === 0) return '0';
+  if (n >= 1000) return (n/1000).toFixed(1).replace('.',',')+'k';
+  return n.toLocaleString('pt-BR');
+}
+
+function fmtDate(d) { // YYYYMMDD → DD/MM
+  return `${d.slice(6,8)}/${d.slice(4,6)}`;
+}
+
+function pct(a, b) { return b > 0 ? ((a/b)*100).toFixed(1)+'%' : '—'; }
+
+/* ══════════════════════════════════
+   RENDER ALL
+══════════════════════════════════ */
+function renderAll() {
+  const now = new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('tb-updated').textContent = `Atualizado em ${now} · Propriedade ${PROPERTY_ID}`;
+  document.getElementById('p1-period').textContent  = `Período: ${startDate} até ${endDate}`;
+
+  renderOverview();
+  renderFunnel();
+  renderQuiz();
+  renderTraffic();
+  renderPages();
+}
+
+/* ══════════════════════════════════
+   PAGE 1 — VISÃO GERAL
+══════════════════════════════════ */
+function renderOverview() {
+  const sessions  = evCount('visitou_home') || (data.sources?.reduce((a,r)=>a+r.sessions,0) || 0);
+  const checkins  = evCount('fez_checkin');
+  const whatsapp  = evCount('clicou_whatsapp');
+  const quizDone  = evCount('concluiu_quiz');
+  const convRate  = sessions > 0 ? ((checkins/sessions)*100).toFixed(1)+'%' : '—';
+  const activeUsr = data.sources?.reduce((a,r)=>a+r.activeUsers,0) || 0;
+
+  document.getElementById('sc-overview').innerHTML = `
+    ${sc('Sessões',       fmtNum(sessions),  'visitou_home ou total de sessões', 'c-blue')}
+    ${sc('Check-ins',     fmtNum(checkins),  'fez_checkin (conv. primária)',      'c-green')}
+    ${sc('WA Cliques',    fmtNum(whatsapp),  'clicou_whatsapp (conv. sec.)',      'c-orange')}
+    ${sc('Torcidômetro',  fmtNum(quizDone),  'concluiu_quiz',                    'c-purple')}
+    ${sc('Taxa de Conv.', convRate,           'fez_checkin ÷ sessões',            'c-teal')}
+  `;
+
+  // Trend chart
+  buildTrendChart();
+
+  // Event distribution donut
+  const evMap = {};
+  (data.evTotals||[]).forEach(r => { evMap[r.eventName] = r.eventCount; });
+  const evLabels = Object.keys(evMap).slice(0,8);
+  const evVals   = evLabels.map(k => evMap[k]);
+  mkChart('c-eventdist','doughnut',{labels:evLabels,datasets:[{data:evVals,backgroundColor:PALETTE,borderWidth:2,borderColor:'#1e293b',hoverOffset:6}]},{cutout:'55%',plugins:{legend:{position:'right',labels:{color:'#64748b',font:{size:10},boxWidth:10,padding:8}}}});
+
+  // Sources bar
+  const srcLabels = (data.sources||[]).map(r => r.sessionSource||'(direct)');
+  const srcVals   = (data.sources||[]).map(r => r.sessions);
+  mkChart('c-sources','bar',{labels:srcLabels,datasets:[{label:'Sessões',data:srcVals,backgroundColor:PALETTE,borderRadius:4,borderSkipped:false}]},{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:GC},border:{color:AC},ticks:{font:{size:10}}},y:{grid:{display:false},border:{color:AC},ticks:{font:{size:10}}}}});
+
+  // Medium donut
+  const medLabels = (data.mediums||[]).map(r => r.sessionMedium||'(none)');
+  const medVals   = (data.mediums||[]).map(r => r.sessions);
+  mkChart('c-medium','doughnut',{labels:medLabels,datasets:[{data:medVals,backgroundColor:PALETTE,borderWidth:2,borderColor:'#1e293b',hoverOffset:6}]},{cutout:'55%',plugins:{legend:{position:'right',labels:{color:'#64748b',font:{size:10},boxWidth:10,padding:8}}}});
+}
+
+function buildTrendChart() {
+  const daily = data.daily || [];
+  const events = ['visitou_home','clicou_quiosque','clicou_whatsapp','fez_checkin'];
+  const colors = ['#4285F4','#7B61FF','#FF6D00','#34A853'];
+
+  // Build date list
+  const dateSet = [...new Set(daily.map(r=>r.date))].sort();
+  const labels  = dateSet.map(fmtDate);
+
+  // Build dataset per event
+  const datasets = events.map((ev,i) => {
+    const vals = dateSet.map(d => {
+      const r = daily.find(r => r.date===d && r.eventName===ev);
+      return r ? r.eventCount : 0;
+    });
+    const hasData = vals.some(v=>v>0);
+    return {
+      label: ev,
+      data: vals,
+      borderColor: colors[i],
+      backgroundColor: i===0?'rgba(66,133,244,.07)':i===3?'rgba(52,168,83,.07)':'transparent',
+      fill: i===0||i===3,
+      tension: .4, borderWidth: 2, pointRadius: 3, pointBackgroundColor: colors[i],
+      hidden: !hasData,
+    };
+  });
+
+  mkChart('c-trend','line',{labels,datasets},{
+    plugins:{legend:{position:'bottom',labels:{color:'#64748b',font:{size:11},boxWidth:10,padding:12,usePointStyle:true}}},
+    scales:{x:{grid:{color:GC},border:{color:AC},ticks:{font:{size:10}}},y:{grid:{color:GC},border:{color:AC},ticks:{font:{size:10}}}}
+  });
+}
+
+/* ══════════════════════════════════
+   PAGE 2 — FUNIL
+══════════════════════════════════ */
+function renderFunnel() {
+  const FUNNEL = [
+    {label:'Acessou o site',     event:'visitou_home',      color:'#4285F4'},
+    {label:'Clicou em quiosque', event:'clicou_quiosque',   color:'#7B61FF'},
+    {label:'Iniciou Torcidômetro',event:'iniciou_quiz',     color:'#FBBC04'},
+    {label:'Concluiu Torcidômetro',event:'concluiu_quiz',   color:'#46BDC6'},
+    {label:'Clicou WhatsApp',    event:'clicou_whatsapp',   color:'#FF6D00'},
+    {label:'Fez Check-in',       event:'fez_checkin',       color:'#34A853'},
+  ];
+
+  const counts = FUNNEL.map(f => evCount(f.event));
+  const topVal = counts[0] || 1;
+
+  // Scorecards
+  const checkins  = counts[5];
+  const quizComp  = counts[3];
+  const sessions  = counts[0];
+  const convGlobal= pct(checkins, sessions);
+  const quizCompl = pct(quizComp, counts[2]);
+  const waConv    = pct(checkins, counts[4]);
+
+  document.getElementById('sc-funil').innerHTML = `
+    ${sc('Conversão Global',       convGlobal, 'visitou_home → fez_checkin', 'c-green')}
+    ${sc('Conclusão Torcidômetro', quizCompl,  'iniciou → concluiu_quiz',    'c-blue')}
+    ${sc('WA → Check-in',          waConv,     'clicou_whatsapp → fez_checkin','c-orange')}
+  `;
+
+  // Funnel table
+  const tbody = document.getElementById('funnel-tbody');
+  tbody.innerHTML = '';
+  FUNNEL.forEach((f,i) => {
+    const n    = counts[i];
+    const pMax = topVal > 0 ? (n/topVal*100).toFixed(1) : 0;
+    const drop = i===0 ? '—' : counts[i-1]>0 ? '-'+((counts[i-1]-n)/counts[i-1]*100).toFixed(1)+'%' : '—';
+    const dropColor = i>0 ? 'color:#D93025' : 'color:#9AA0A6';
+    tbody.innerHTML += `<tr>
+      <td style="font-weight:500">${f.label}</td>
+      <td><span class="fn-event">${f.event}</span></td>
+      <td><div class="fn-bar-bg"><div class="fn-bar-fill" style="width:${pMax}%;background:${f.color}">${pMax>12?pMax+'%':''}</div></div></td>
+      <td style="text-align:right;font-weight:600;color:${f.color}">${fmtNum(n)}</td>
+      <td style="text-align:right;color:#5F6368">${pMax}%</td>
+      <td style="text-align:right;font-size:11px;font-weight:500;${dropColor}">${drop}</td>
+    </tr>`;
+  });
+
+  // Drop-off chart
+  const drops = FUNNEL.slice(1).map((f,i) => {
+    const prev = counts[i]; const cur = counts[i+1];
+    return prev > 0 ? +((prev-cur)/prev*100).toFixed(1) : 0;
+  });
+  mkChart('c-dropoff','bar',
+    {labels:FUNNEL.slice(1).map(f=>f.label),datasets:[{label:'Drop-off %',data:drops,backgroundColor:PALETTE.map(c=>c+'99'),borderRadius:3,borderSkipped:false}]},
+    {plugins:{legend:{display:false}},scales:{x:{grid:{color:GC},border:{color:AC},ticks:{font:{size:9},maxRotation:20}},y:{grid:{color:GC},border:{color:AC},ticks:{font:{size:10},callback:v=>v+'%'}}}}
+  );
+
+  // Funnel by source
+  const sources = (data.sources||[]).slice(0,5);
+  const srcNames = sources.map(r=>r.sessionSource||'(direct)');
+  mkChart('c-funnel-src','bar',{
+    labels:srcNames,
+    datasets:[
+      {label:'Sessões',      data:sources.map(r=>r.sessions),     backgroundColor:'#4285F4BB',borderRadius:3,borderSkipped:false},
+      {label:'Usuários ativos',data:sources.map(r=>r.activeUsers),backgroundColor:'#34A853BB',borderRadius:3,borderSkipped:false},
+    ]
+  },{plugins:{legend:{position:'top',labels:{color:'#64748b',font:{size:11},boxWidth:10,padding:12}}},scales:{x:{grid:{color:GC},border:{color:AC},ticks:{font:{size:10}}},y:{grid:{color:GC},border:{color:AC},ticks:{font:{size:10}}}}});
+}
+
+/* ══════════════════════════════════
+   PAGE 3 — TORCIDÔMETRO
+══════════════════════════════════ */
+function renderQuiz() {
+  const qStart = evCount('iniciou_quiz');
+  const qEnd   = evCount('concluiu_quiz');
+  const qRes   = evCount('recebeu_resultado_quiz');
+
+  document.getElementById('sc-quiz').innerHTML = `
+    ${sc('Torcidômetro Iniciados',   fmtNum(qStart), 'evento: iniciou_quiz',         'c-blue')}
+    ${sc('Torcidômetro Concluídos',  fmtNum(qEnd),   pct(qEnd,qStart)+' conclusão',  'c-green')}
+    ${sc('Resultado Recebidos',       fmtNum(qRes),   'recebeu_resultado_quiz',        'c-purple')}
+    ${sc('Perfil mais comum',         '—',            'após dimensões personalizadas', 'c-orange')}
+  `;
+
+  // Empty state charts (custom dimensions needed)
+  mkEmptyChart('c-quiz-profiles', 'Aguardando dimensão personalizada perfil_resultante no GA4');
+  mkEmptyChart('c-quiz-conv',     'Aguardando dados de conversão por perfil');
+  mkEmptyChart('c-quiz-ans',      'Aguardando dimensões resposta_1 a resposta_4');
+  mkEmptyChart('c-quiz-kiosk',    'Aguardando dimensão quiosque_sugerido');
+}
+
+/* ══════════════════════════════════
+   PAGE 4 — TRÁFEGO
+══════════════════════════════════ */
+function renderTraffic() {
+  const totalSessions = (data.sources||[]).reduce((a,r)=>a+r.sessions,0);
+  const totalUsers    = (data.sources||[]).reduce((a,r)=>a+r.activeUsers,0);
+  const bestSrc       = data.sources?.[0]?.sessionSource || '—';
+  const totalCamp     = (data.campaigns||[]).length;
+
+  document.getElementById('sc-traffic').innerHTML = `
+    ${sc('Sessões Totais',   fmtNum(totalSessions), 'período selecionado',    'c-blue')}
+    ${sc('Usuários Ativos',  fmtNum(totalUsers),    'activeUsers (GA4)',      'c-green')}
+    ${sc('Melhor Fonte',     bestSrc,               'maior volume de sessões','c-yellow')}
+    ${sc('Campanhas',        fmtNum(totalCamp),     'utm_campaign distintos', 'c-purple')}
+  `;
+
+  // Source over time stacked
+  buildSourceTimeChart();
+
+  // Medium donut (copy from page 1)
+  const medLabels = (data.mediums||[]).map(r => r.sessionMedium||'(none)');
+  const medVals   = (data.mediums||[]).map(r => r.sessions);
+  mkChart('c-medium2','doughnut',{labels:medLabels,datasets:[{data:medVals,backgroundColor:PALETTE,borderWidth:2,borderColor:'#1e293b',hoverOffset:6}]},{cutout:'55%',plugins:{legend:{position:'bottom',labels:{color:'#64748b',font:{size:10},boxWidth:10,padding:8}}}});
+
+  // Campaign table
+  const tbody = document.getElementById('campaign-tbody');
+  tbody.innerHTML = '';
+  const srcColor = {google:'ch-yellow',instagram:'ch-blue',facebook:'ch-blue',whatsapp:'ch-green',direct:'ch-orange',email:'ch-gray'};
+  (data.campaigns||[]).forEach(r => {
+    const src = r.sessionSource||'(none)';
+    tbody.innerHTML += `<tr>
+      <td style="font-family:monospace;font-size:11px;color:#1A73E8">${r.sessionCampaignName||'(sem campanha)'}</td>
+      <td><span class="chip ${srcColor[src]||'ch-gray'}">${src}</span></td>
+      <td><span class="chip ch-gray">${r.sessionMedium||'(none)'}</span></td>
+      <td class="num" style="font-weight:500">${r.sessions.toLocaleString('pt-BR')}</td>
+      <td class="num">${r.activeUsers.toLocaleString('pt-BR')}</td>
+    </tr>`;
+  });
+  document.getElementById('campaign-count').textContent = `${(data.campaigns||[]).length} campanhas`;
+}
+
+function buildSourceTimeChart() {
+  const dailySrc = data.dailySrc || [];
+  const dateSet  = [...new Set(dailySrc.map(r=>r.date))].sort();
+  const srcSet   = [...new Set(dailySrc.map(r=>r.sessionSource||'(direct)'))].slice(0,5);
+  const labels   = dateSet.map(fmtDate);
+
+  const datasets = srcSet.map((src,i) => ({
+    label: src,
+    data: dateSet.map(d => {
+      const r = dailySrc.find(r=>r.date===d&&(r.sessionSource||'(direct)')===src);
+      return r ? r.sessions : 0;
+    }),
+    borderColor: PALETTE[i], backgroundColor:'transparent', tension:.4, borderWidth:2, pointRadius:2,
+  }));
+
+  mkChart('c-src-time','line',{labels,datasets},{
+    plugins:{legend:{position:'top',labels:{color:'#64748b',font:{size:11},boxWidth:10,padding:12,usePointStyle:true}}},
+    scales:{x:{grid:{color:GC},border:{color:AC},ticks:{font:{size:10}}},y:{grid:{color:GC},border:{color:AC},ticks:{font:{size:10}}}}
+  });
+}
+
+/* ══════════════════════════════════
+   PAGE 5 — PÁGINAS
+══════════════════════════════════ */
+function renderPages() {
+  const pages    = data.pages || [];
+  const totalPV  = pages.reduce((a,r)=>a+r.screenPageViews,0);
+  const topPage  = pages[0]?.pagePath || '—';
+  const totUsrs  = pages.reduce((a,r)=>a+r.activeUsers,0);
+
+  document.getElementById('sc-pages').innerHTML = `
+    ${sc('Visualizações Totais', fmtNum(totalPV), 'screenPageViews',        'c-blue')}
+    ${sc('Página mais acessada', topPage.length>20?topPage.substring(0,18)+'…':topPage, topPage, 'c-green')}
+    ${sc('Usuários em páginas',  fmtNum(totUsrs), 'activeUsers (GA4)',      'c-purple')}
+  `;
+
+  // Pages table
+  const tbody = document.getElementById('pages-tbody');
+  tbody.innerHTML = '';
+  pages.forEach((r,i) => {
+    const pctVal = totalPV > 0 ? (r.screenPageViews/totalPV*100).toFixed(1) : 0;
+    tbody.innerHTML += `<tr>
+      <td style="color:#9AA0A6;font-weight:700;font-size:11px">${i+1}</td>
+      <td style="font-size:11px;font-family:monospace;color:#1A73E8;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.pagePath}</td>
+      <td class="num" style="font-weight:600">${r.screenPageViews.toLocaleString('pt-BR')}</td>
+      <td class="num">
+        <div class="ib"><span>${pctVal}%</span><div class="ib-bg"><div class="ib-fill" style="width:${pctVal}%;background:#4285F4"></div></div></div>
+      </td>
+    </tr>`;
+  });
+
+  // Pages pie (top 8)
+  const top8  = pages.slice(0,8);
+  const p8lbl = top8.map(r=>r.pagePath.length>25?r.pagePath.substring(0,23)+'…':r.pagePath);
+  const p8val = top8.map(r=>r.screenPageViews);
+  mkChart('c-pages-pie','doughnut',{labels:p8lbl,datasets:[{data:p8val,backgroundColor:PALETTE,borderWidth:2,borderColor:'#1e293b',hoverOffset:6}]},{cutout:'55%',plugins:{legend:{position:'right',labels:{color:'#64748b',font:{size:9},boxWidth:8,padding:6}}}});
+
+  // Device chart
+  const dev = data.devices || [];
+  mkChart('c-device','bar',{
+    labels:dev.map(r=>r.deviceCategory),
+    datasets:[
+      {label:'Sessões',      data:dev.map(r=>r.sessions),     backgroundColor:'#4285F4CC',borderRadius:4,borderSkipped:false},
+      {label:'Usuários ativos',data:dev.map(r=>r.activeUsers),backgroundColor:'#34A853CC',borderRadius:4,borderSkipped:false},
+    ]
+  },{plugins:{legend:{position:'top',labels:{color:'#64748b',font:{size:11},boxWidth:10,padding:12}}},scales:{x:{grid:{color:GC},border:{color:AC},ticks:{font:{size:10}}},y:{grid:{color:GC},border:{color:AC},ticks:{font:{size:10}}}}});
+}
+
+/* ══════════════════════════════════
+   CHART HELPERS
+══════════════════════════════════ */
+function mkChart(id, type, chartData, opts={}) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (charts[id]) { charts[id].destroy(); }
+  charts[id] = new Chart(canvas, {
+    type,
+    data: chartData,
+    options: { responsive:true, maintainAspectRatio:false, ...opts }
+  });
+}
+
+function mkEmptyChart(id, msg) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+  const ctx = canvas.getContext('2d');
+  const w = canvas.parentElement.offsetWidth || 300;
+  const h = canvas.parentElement.offsetHeight || 200;
+  canvas.width = w; canvas.height = h;
+  ctx.fillStyle = '#F8F9FA';
+  ctx.fillRect(0,0,w,h);
+  ctx.fillStyle = '#9AA0A6';
+  ctx.font = '11px Roboto, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('⏳ ' + msg, w/2, h/2);
+}
+
+/* ══════════════════════════════════
+   SCORECARD BUILDER
+══════════════════════════════════ */
+function sc(label, value, sub, cls) {
+  return `<div class="sc-card ${cls}">
+    <div class="sc-lbl">${label}</div>
+    <div class="sc-val">${value}</div>
+    <div class="sc-sub">${sub}</div>
+  </div>`;
+}
+
+/* ══════════════════════════════════
+   PAGE NAVIGATION
+══════════════════════════════════ */
+function goPage(n, btn) {
+  document.querySelectorAll('.ls-page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ls-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+n).classList.add('active');
+  btn.classList.add('active');
+  document.querySelector('.ls-canvas').scrollTop = 0;
+  setTimeout(()=>Object.values(charts).forEach(c=>c.resize?.()), 60);
+}
+
+/* ══════════════════════════════════
+   UI HELPERS
+══════════════════════════════════ */
+function showLoading(v, txt='') {
+  const el = document.getElementById('loading-overlay');
+  el.style.display = v ? 'flex' : 'none';
+  if (txt) document.getElementById('loading-txt').textContent = txt;
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  document.getElementById('error-msg').textContent = msg;
+  el.style.display = 'flex';
+}
+
+function hideError() {
+  document.getElementById('error-banner').style.display = 'none';
+}
+</script>
+</body>
+</html>
